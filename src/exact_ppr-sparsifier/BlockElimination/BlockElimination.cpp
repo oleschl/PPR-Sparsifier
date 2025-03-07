@@ -106,9 +106,8 @@ namespace SC_BlockElimination {
     }
 
     jl_array_t *matrix_solve(CSCMatrix &M, CSCMatrix &B) {
-        std::cout << "started matrix solve" << std::endl;
+        // std::cout << "started matrix solve" << std::endl;
         std::string full_path = __FILE__;  // Full path of main.cpp at compile-time
-        std::cout << full_path << std::endl;
         std::string sourceDir = full_path.substr(0, full_path.find_last_of("/\\"));
         std::string command = "include(\"" + sourceDir + "/system_solver.jl\")";
         // call laplacian solver in julia
@@ -138,7 +137,7 @@ namespace SC_BlockElimination {
         // there should be nicer ways to transfer arguments?
         jl_array_t *x = (jl_array_t *) jl_call(func, args, 10);
         jl_atexit_hook(0);
-        std::cout << "finished matrix solve" << std::endl;
+        // std::cout << "finished matrix solve" << std::endl;
         return x;
     }
 
