@@ -8,7 +8,7 @@ namespace PPR_Matrix_Inv {
     DiGraph constructPPRSparsifier(const GEdge& G, const std::vector<int>& K, double alpha) {
         int k = K.size();
         // transform input graph to directed graph and construct walking (transition) matrix W for computing PageRank
-        DiGraph H;
+        DiGraph H(G.n);
         for (auto edge: G.edges) {
             H.add_edge(edge.u, edge.v, edge.weight);
             H.add_edge(edge.v, edge.u, edge.weight);

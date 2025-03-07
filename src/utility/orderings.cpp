@@ -1,9 +1,29 @@
 #include <vector>
 #include <algorithm>
 #include <climits>
+#include <numeric>
+#include <random>
 #include "graph.h"
 #include "utility/min_degree_pq.h"
 
+std::pair<std::vector<int>, std::vector<int>> getRandomOrdering(const GEdge &G, std::vector<int> &K, std::vector<int> &invK) {
+    std::vector<int> shuffled_indices(invK.size());
+    std::iota(shuffled_indices.begin(), shuffled_indices.end(), 0);
+    std::shuffle(shuffled_indices.begin(), shuffled_indices.end(), std::mt19937{std::random_device{}()});
+
+    // create permutation vectors
+    std::vector<int> perm(G.n);
+    std::vector<int> invPerm(G.n);
+    for(int i = 0; i < invK.size(); ++i){
+        perm[i] = invK[shuffled_indices[i]];
+        invPerm[invK[shuffled_indices[i]]] = i;
+    }
+    for(int i = invK.size(); i < G.n; ++i){
+        perm[i] = K[i-invK.size()];
+        invPerm[K[i-invK.size()]] = i;
+    }
+    return {perm, invPerm};
+}
 
 std::pair<std::vector<int>, std::vector<int>> getStaticMinDegOrdering(const GEdge &G, std::vector<int> &K, std::vector<int> &invK){
     // compute initial degrees

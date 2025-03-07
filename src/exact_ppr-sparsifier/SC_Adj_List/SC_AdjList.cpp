@@ -6,7 +6,7 @@
 
 namespace SC_Adj_List{
 
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha){
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string& order){
         // get set of non-terminal nodes
         auto inv_K = getNonTerminals(G.n, K);
         // renamed from diag
@@ -41,8 +41,17 @@ namespace SC_Adj_List{
             weights[xadj[edge.v]+temp_pos[edge.v]] = -edge.weight;
             ++temp_pos[edge.v];
         }
-        // get minimum degree ordering
-        auto [perm, inv_perm] = getDynamicMinDegOrdering(G.n, G.m, xadj, adj, K, inv_K);
+        // get ordering
+
+        std::pair<std::vector<int>, std::vector<int>> ordering;
+        if (order == "random") {
+            ordering = getRandomOrdering(G, K, inv_K);
+        } else if (order == "static") {
+            ordering = getStaticMinDegOrdering(G, K, inv_K);
+        } else if (order == "dynamic") {
+            ordering = getDynamicMinDegOrdering(G.n, G.m, xadj, adj, K, inv_K);
+        }
+        auto [perm, inv_perm] = ordering;
 
         auto M = symbolic_factorization(G.n, inv_K.size(), adj, xadj, perm, inv_perm);
 

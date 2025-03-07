@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <chrono>
 #include <functional>
+#include <unistd.h>
 
 #include "graph.h"
 #include "graph_io.h"
@@ -11,14 +12,6 @@
 #include "exact_ppr_sparsifier/SC_Block_Elimination.h"
 #include "exact_ppr_sparsifier/SC_Adj_List.h"
 #include "exact_ppr_sparsifier/SC_Hash_Table.h"
-
-enum Implementation {
-    NodeRemovalImplementation,
-    PPR_MatrixInvImplementation,
-    SC_AdjListImplementation,
-    SC_HashTableImplementation,
-    SC_BlockEliminationImplementation
-};
 
 void printAdjMatrix(const std::vector<std::vector<std::pair<int, double>>>& adjList, int n) {
     // Initialize adjacency matrix with zeros
@@ -62,49 +55,77 @@ auto measureTime(Func func, Args&&... args) {
     return std::make_pair(elapsed_time, result);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
-    Implementation version = NodeRemovalImplementation;
+    int k = 0;
+    std::string algorithm;
+    std::string version;
+    bool computeDynamically = false;
+    std::string inputFile;
+    bool debug = false;
 
-    GEdge G;
-    std::vector<int> K;
-    parseFile3("in.txt", G, K, 100);
-
-    std::pair<double, DiGraph> result;
-    switch (version) {
-        case Implementation::NodeRemovalImplementation:
-            result = measureTime(NodeRemoval::constructPPRSparsifier, G, K, 0.15);
-            break;
-        case Implementation::PPR_MatrixInvImplementation:
-            result = measureTime(PPR_Matrix_Inv::constructPPRSparsifier, G, K, 0.15);
-            break;
-        case Implementation::SC_AdjListImplementation:
-            result = measureTime(SC_Adj_List::constructPPRSparsifier, G, K, 0.15);
-            break;
-        case Implementation::SC_HashTableImplementation:
-            result = measureTime(SC_Hash_Table::constructPPRSparsifier, G, K, 0.15);
-            break;
-        case Implementation::SC_BlockEliminationImplementation:
-            result = measureTime(SC_BlockElimination::constructPPRSparsifier, G, K, 0.15);
-            break;
+    int opt;
+    while ((opt = getopt(argc, argv, "k:a:v:f:doh")) != -1) {
+        switch (opt) {
+            case 'k':
+                k = std::stoi(optarg);
+                break;
+            case 'a':
+                algorithm = optarg;
+                break;
+            case 'v':
+                version = optarg;
+                break;
+            case 'f':
+                inputFile = optarg;
+                break;
+            case 'd':
+                debug = true;
+                break;
+            case 'o':
+                computeDynamically = true;  // If -o is specified, enable dynamic order computation
+                break;
+            case 'h':
+                std::cerr << "Usage: " << argv[0] << " -k <number of terminals> -a <algorithm> -v <version> -f <input_file> [-d] [-o] [-h]\n";
+                return 0;
+            case '?':
+                std::cerr << "Unknown option: " << (char(optopt) == 'o') << std::endl;
+                return 1;
+        }
     }
 
-    std::cout << "Function 1 time: " << result.first << " ms\n";
+    double alpha = 0.15;
+    GEdge G;
+    std::vector<int> K;
+    parseFile3(inputFile, G, K, k);
+
+    std::pair<double, DiGraph> result;
+    if (algorithm == "node_removal") {
+        if(computeDynamically) {
+            result = measureTime(NodeRemoval::constructPPRSparsifier2, G, K, 0.15);
+        } else {
+            result = measureTime(NodeRemoval::constructPPRSparsifier, G, K, 0.15, version);
+        }
+    } else if (algorithm == "sc_hash_table") {
+        if(computeDynamically) {
+            result = measureTime(SC_Hash_Table::constructPPRSparsifier2, G, K, 0.15);
+        } else {
+            result = measureTime(SC_Hash_Table::constructPPRSparsifier, G, K, 0.15, version);
+        }
+    } else if (algorithm == "sc_adj_list") {
+        result = measureTime(SC_Adj_List::constructPPRSparsifier, G, K, 0.15, version);
+    } else if (algorithm == "block_elimination") {
+        result = measureTime(SC_BlockElimination::constructPPRSparsifier, G, K, alpha);
+    } else if (algorithm == "ppr_matrix_inv") {
+        result = measureTime(PPR_Matrix_Inv::constructPPRSparsifier, G, K, alpha);
+    } else {
+        std::cerr << "Unknown algorithm: " << algorithm << std::endl;
+    }
+
+    std::cout << "runtime: " << result.first << " ms\n";
+
     Sparsifier sp = {result.second, K};
-    comparePPVs(G, sp, 0.85);
-
-    //auto sparsifier = getApproximateSparsifier(G, K, 10, 10, 0.85);
-    // comparePPVs(G, sparsifier, 0.85);
-
-   // auto newG = approx_chol(G, K, 2, 2);
-
-    //printAdjMatrix(sparsifier.H.adjList, sparsifier.H.n);
-
-    //printEdgesAboveThreshold(sparsifier.H.adjList, 0.1);
-
-   //sparsifier.H.printAdjList();
-
-    //newG.printAdjList();
+    if(debug) comparePPVs(G, sp, 1-alpha);
 
     return 0;
 }

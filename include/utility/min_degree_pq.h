@@ -17,7 +17,8 @@ private:
     };
 
     int minDegree;
-    int degreeThresholdRatio = 5;
+    // TODO find appropriate value
+    int degreeThresholdRatio = 1;
     int degreeThreshold;
     std::vector<Vertex*> vertices;
     std::vector<Vertex*> buckets;
