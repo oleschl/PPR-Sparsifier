@@ -135,7 +135,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
         }
         xlnz[i+1] = xlnz[i] + i_nz;
     }
-    int nnz = xlnz[k-1]-1;
+    int nnz = xlnz[k]-1;
 
     return {nnz, std::vector<double> (nnz), xlnz, xnzsub, nzsub};
 }
