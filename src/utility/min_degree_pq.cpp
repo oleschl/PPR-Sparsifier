@@ -30,6 +30,14 @@ void MinDegreePQ::update(int vertexId, int newDegree) {
     }
 }
 
+void MinDegreePQ::increase(int vertexId){
+    update(vertexId, vertices[vertexId]->degree+1);
+}
+
+void MinDegreePQ::decrease(int vertexId){
+    update(vertexId, vertices[vertexId]->degree-1);
+}
+
 // only guaranteed to return the correct value if the last operation was pop
 int MinDegreePQ::get_min_deg() {
     return minDegree;

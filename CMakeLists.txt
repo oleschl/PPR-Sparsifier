@@ -15,16 +15,17 @@ link_directories(${JULIA_DIR}/lib)
 
 add_executable(PPR-Sparsifier
         src/main.cpp
-        src/graph_io.cpp
         src/utility/pagerank.cpp
         src/utility/utility.cpp
         src/utility/orderings.cpp
         src/utility/min_degree_pq.cpp
+        src/utility/graph_utility.cpp
         src/exact_ppr-sparsifier/NodeRemoval/NodeRemoval.cpp
         src/exact_ppr-sparsifier/PPR_Matrix_Inv/PPR_Matrix_Inv.cpp
         src/exact_ppr-sparsifier/SC_Adj_List/SC_AdjList.cpp
         src/exact_ppr-sparsifier/SC_Hash_Table/SC_Hash_Table.cpp
         src/exact_ppr-sparsifier/BlockElimination/BlockElimination.cpp
+        src/approximate_pp-sparsifier/approx_pp-sparsifier.cpp
 )
 
 # Link with Julia

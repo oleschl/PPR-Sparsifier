@@ -4,14 +4,17 @@
 #include <functional>
 #include <unistd.h>
 
+#include <julia.h>
 #include "graph.h"
-#include "graph_io.h"
+#include "./utility/utility.h"
+#include "./utility/graph_utility.h"
 #include "./utility/pagerank.h"
 #include "exact_ppr_sparsifier/NodeRemoval.h"
 #include "exact_ppr_sparsifier/PPR_Matrix_Inv.h"
 #include "exact_ppr_sparsifier/SC_Block_Elimination.h"
 #include "exact_ppr_sparsifier/SC_Adj_List.h"
 #include "exact_ppr_sparsifier/SC_Hash_Table.h"
+#include "approximate_ppr_sparsifier/approximate_pp_sparsifier.h"
 
 void printAdjMatrix(const std::vector<std::vector<std::pair<int, double>>>& adjList, int n) {
     // Initialize adjacency matrix with zeros
@@ -56,6 +59,8 @@ auto measureTime(Func func, Args&&... args) {
 }
 
 int main(int argc, char *argv[]) {
+    // init julia here
+    jl_init();
 
     int k = 0;
     std::string algorithm;
@@ -96,28 +101,33 @@ int main(int argc, char *argv[]) {
 
     double alpha = 0.15;
     GEdge G;
-    std::vector<int> K;
-    parseFile3(inputFile, G, K, k);
+    parseEdgeList(inputFile, G);
+    // GEdge G = chimera(100, 1, false);
+    auto K = getRandomTerminals(G.n, k, 12345);
 
     std::pair<double, DiGraph> result;
     if (algorithm == "node_removal") {
         if(computeDynamically) {
-            result = measureTime(NodeRemoval::constructPPRSparsifier2, G, K, 0.15);
+            result = measureTime(NodeRemoval::constructPPRSparsifier2, G, K, alpha);
         } else {
-            result = measureTime(NodeRemoval::constructPPRSparsifier, G, K, 0.15, version);
+            result = measureTime(NodeRemoval::constructPPRSparsifier, G, K, alpha, version);
         }
     } else if (algorithm == "sc_hash_table") {
         if(computeDynamically) {
-            result = measureTime(SC_Hash_Table::constructPPRSparsifier2, G, K, 0.15);
+            result = measureTime(SC_Hash_Table::constructPPRSparsifier2, G, K, alpha);
         } else {
-            result = measureTime(SC_Hash_Table::constructPPRSparsifier, G, K, 0.15, version);
+            result = measureTime(SC_Hash_Table::constructPPRSparsifier, G, K, alpha, version);
         }
     } else if (algorithm == "sc_adj_list") {
-        result = measureTime(SC_Adj_List::constructPPRSparsifier, G, K, 0.15, version);
+        result = measureTime(SC_Adj_List::constructPPRSparsifier, G, K, alpha, version);
     } else if (algorithm == "block_elimination") {
         result = measureTime(SC_BlockElimination::constructPPRSparsifier, G, K, alpha);
     } else if (algorithm == "ppr_matrix_inv") {
         result = measureTime(PPR_Matrix_Inv::constructPPRSparsifier, G, K, alpha);
+    }  else if (algorithm == "approximate") {
+        int split = 10;
+        int merge = 10;
+        result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, split, merge);
     } else {
         std::cerr << "Unknown algorithm: " << algorithm << std::endl;
     }
@@ -127,6 +137,7 @@ int main(int argc, char *argv[]) {
     Sparsifier sp = {result.second, K};
     if(debug) comparePPVs(G, sp, 1-alpha);
 
+    jl_atexit_hook(0);
     return 0;
 }
 

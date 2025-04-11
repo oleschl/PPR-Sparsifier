@@ -111,7 +111,7 @@ namespace SC_BlockElimination {
         std::string sourceDir = full_path.substr(0, full_path.find_last_of("/\\"));
         std::string command = "include(\"" + sourceDir + "/system_solver.jl\")";
         // call laplacian solver in julia
-        jl_init();
+        // jl_init();
         jl_eval_string(command.c_str());
 
         // matrix dimensions
@@ -136,7 +136,7 @@ namespace SC_BlockElimination {
 
         // there should be nicer ways to transfer arguments?
         jl_array_t *x = (jl_array_t *) jl_call(func, args, 10);
-        jl_atexit_hook(0);
+        //jl_atexit_hook(0);
         // std::cout << "finished matrix solve" << std::endl;
         return x;
     }

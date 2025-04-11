@@ -1,6 +1,7 @@
 #include <vector>
 #include <numeric>
 #include <cstdlib>
+#include <cmath>
 #include "graph.h"
 
 std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const DiGraph& G, double alpha) {
@@ -60,9 +61,25 @@ std::vector<double> pageRank(DiGraph& G, std::vector<double> r, double alpha, do
     return pageRank(W, r, G.n, eps, matIter);
 }
 
+double frobeniusNorm(std::vector<std::vector<double>>& PPR1, std::vector<std::vector<double>>& PPR2, int n) {
+    double sum1 = 0.0;
+    double sum2 = 0.0;
+    for(int i = 0; i < n; ++i){
+        for(int j = 0; j < n; ++j){
+            sum1 += PPR1[i][j] * PPR1[i][j];
+            sum2 += (PPR1[i][j] - PPR2[i][j]) * (PPR1[i][j] - PPR2[i][j]);
+        }
+    }
+
+    return std::sqrt(sum2/sum1);
+}
+
 double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
     std::vector<double> pH(H.H.n-1);
     std::vector<double> pG(G.n);
+
+    std::vector<std::vector<double>> PPR_G(H.H.n-1, std::vector<double> (H.H.n-1));
+    std::vector<std::vector<double>> PPR_H(H.H.n-1, std::vector<double> (H.H.n-1));
 
     DiGraph dirG(G.n);
     for(auto edge : G.edges){
@@ -91,15 +108,23 @@ double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
             sumH += pH[j];
         }
         for(int j = 0; j < H.H.n-1; ++j) {
+            PPR_G[i][j] = pG[H.mapHToG[j]]/sumG;
+            PPR_H[i][j] = pH[j]/sumH;
+        }
+
+        for(int j = 0; j < H.H.n-1; ++j) {
             auto localDiff = std::abs((pH[j]/sumH)-(pG[H.mapHToG[j]]/sumG));
             auto localDiff2 = (pH[j]/sumH)/(pG[H.mapHToG[j]]/sumG);
-            std::cout << "diff " << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
-            if(localDiff > 0.000002) {
+            //std::cout << "diff " << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
+            if(localDiff > 0.1) {
                 std::cout << "high difference detected for node " << j << ":" << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
             }
             diff += localDiff;
         }
     }
+
+    auto norm = frobeniusNorm(PPR_G, PPR_H, H.H.n-1);
+    std::cout << "norm: " << norm << std::endl;
 
     return diff;
 }

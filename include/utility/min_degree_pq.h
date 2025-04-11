@@ -31,6 +31,8 @@ public:
     void add(int vertexId, int degree);
     void eliminate(int vertexId);
     void update(int vertexId, int newDegree);
+    void increase(int vertexId);
+    void decrease(int vertexId);
     int get_min_deg();
     int pop();
 };
