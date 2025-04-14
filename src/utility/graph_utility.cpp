@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <julia.h>
 
@@ -68,22 +69,42 @@ GEdge chimera(int n, int k, bool weighted) {
     return {n, m, edges};
 }
 
+// parse weighted + unweighted edge list
 void parseEdgeList(const std::string& filename, GEdge& G) {
     std::ifstream infile(filename);
     if (!infile) {
         throw std::runtime_error("Error opening file: " + filename);
     }
-
-    // read in edges
-    int u, v;
     G.n = 0, G.m = 0;
-    while (infile >> u >> v) {
-        ++G.m;
-        if(G.n < std::max(u, v)+1){
-            G.n = std::max(u,v)+1;
+    // read in edges
+    std::string line;
+    int u, v;
+    double w;
+    while (std::getline(infile, line)) {
+        std::istringstream iss(line);
+        if (!(iss >> u >> v)) continue;
+        if (!(iss >> w)) {
+            w = 1.0; // only two values -> unweighted
         }
-        G.addEdge(u, v, 1.0);
+
+        ++G.m;
+        G.n = std::max(G.n, std::max(u, v) + 1);
+        G.addEdge(u, v, w);
     }
 
     infile.close();
 }
+
+void writeEdgeList(const std::string& filename, const GEdge& G) {
+    std::ofstream outfile(filename);
+    if (!outfile) {
+        throw std::runtime_error("Error opening file for writing: " + filename);
+    }
+
+    for (const auto& e : G.edges) {
+        outfile << e.u << " " << e.v << " " << e.weight << "\n";
+    }
+
+    outfile.close();
+}
+

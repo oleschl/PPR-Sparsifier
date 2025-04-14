@@ -29,12 +29,14 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
         int i_nz = 0;
         int merge_i = merge_link[i];
         bool merge_flag = false;
-        marker[i] = merge_i == -1? i : marker[merge_i];
+        if(merge_i != -1){
+            marker[i] = marker[merge_i];
+        }
         xnzsub[i] = nz_end;
         int node = perm[i];
 
         // find adj[i]-s_i-1
-        reach_link[i] = n+1;
+        reach_link[i] = n;
         for(int j = xadj[node]; j < xadj[node+1]; ++j){
             int neighbor = inv_perm[adj[j]];
             if(neighbor < i) continue;
@@ -52,7 +54,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
 
         int lmax = 0;
 
-        if(merge_flag || merge_i == 0 || merge_link[merge_i] != -1){
+        if(!merge_flag || merge_i == -1 || merge_link[merge_i] != -1){
             // iterate through each column j that effects i
             int j = merge_link[i];
             while(j != -1){
