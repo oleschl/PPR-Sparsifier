@@ -29,7 +29,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
         int i_nz = 0;
         int merge_i = merge_link[i];
         bool merge_flag = false;
-        marker[i] = merge_i == 0? i : marker[merge_i];
+        marker[i] = merge_i == -1? i : marker[merge_i];
         xnzsub[i] = nz_end;
         int node = perm[i];
 
@@ -135,7 +135,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
         }
         xlnz[i+1] = xlnz[i] + i_nz;
     }
-    int nnz = xlnz[k]-1;
+    int nnz = xlnz[k];
 
     return {nnz, std::vector<double> (nnz), xlnz, xnzsub, nzsub};
 }

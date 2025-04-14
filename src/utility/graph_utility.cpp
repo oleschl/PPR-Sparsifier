@@ -24,24 +24,28 @@
     return {n, m, edges};
 }
 
- GEdge chimera(int n, int k, bool weighted) {
-    jl_value_t* arg1 = jl_box_int64(n);
-    jl_value_t* arg2 = jl_box_int64(k);
-    jl_value_t* args[5] = {arg1, arg2};
-    jl_eval_string("using Laplacians");
-    jl_module_t* lap_mod = (jl_module_t*)jl_eval_string("Laplacians");
+GEdge chimera(int n, int k, bool weighted) {
+    jl_value_t* n_value = jl_box_int64(n);
+    jl_value_t* k_value = jl_box_int64(k);
     jl_function_t* func;
     if(!weighted) {
-        func = jl_get_function(lap_mod, "uni_chimera");
+        func = jl_get_function(jl_main_module, "uni_chimera");
     } else {
-        func = jl_get_function(lap_mod, "wted_chimera");
+        func = jl_get_function(jl_main_module, "wted_chimera");
     }
-    jl_value_t* ijv_obj = jl_call(func, args, 2);
+    jl_value_t* ijv_obj =  jl_call2(func, n_value, k_value);
 
-    if (jl_exception_occurred())
-        jl_printf(jl_stderr_stream(), "Error: %s\n", jl_typeof_str(jl_exception_occurred()));
+     if (jl_exception_occurred()) {
+         jl_call2(jl_get_function(jl_base_module, "showerror"),
+                  (jl_value_t*)jl_stderr_obj(),
+                  jl_exception_occurred());
+         jl_printf(jl_stderr_stream(), "\n");
+     }
 
-    //jl_value_t* nnz_field = jl_get_field(ijv_obj, "nnz");
+     if (ijv_obj == nullptr) {
+         std::cerr << "Error: ijv_obj is null!" << std::endl;
+     }
+
     jl_value_t* col_field = jl_get_field(ijv_obj, "colptr");
     jl_value_t* row_field = jl_get_field(ijv_obj, "rowval");
     jl_value_t* v_field = jl_get_field(ijv_obj, "nzval");
@@ -50,12 +54,10 @@
     int64_t* cols = (int64_t*) jl_array_data(col_field);
     double* v = (double*) jl_array_data(v_field);
 
-    std::cout << v[1] << std::endl;
-
     std::vector<Edge> edges;
     int m = 0;
     for(int i = 0; i < n; i++){
-        for(int j = cols[i]-1; j < cols[i+1]-2; ++j){
+        for(int j = cols[i]-1; j < cols[i+1]-1; ++j){
             if(i < rows[j]-1){
                 edges.emplace_back(i, rows[j]-1, v[j]);
                 ++m;

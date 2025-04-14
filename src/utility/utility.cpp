@@ -15,6 +15,21 @@ std::vector<int> getRandomTerminals(int n, int k, int seed) {
     return terminals;
 }
 
+double compute_percentile(std::vector<double> data, double p) {
+    std::sort(data.begin(), data.end());
+
+    double idx = p * (data.size() - 1);
+    auto lower = static_cast<size_t>(std::floor(idx));
+    auto upper = static_cast<size_t>(std::ceil(idx));
+
+    if (lower == upper) {
+        return data[lower];
+    } else {
+        // Linear interpolation between nearest ranks
+        return data[lower] + (idx - lower) * (data[upper] - data[lower]);
+    }
+}
+
 std::vector<int> getNonTerminals(int n, const std::vector<int>& K) {
     std::vector<int> non_terminals;
     non_terminals.reserve(n - K.size());

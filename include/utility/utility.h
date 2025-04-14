@@ -5,6 +5,7 @@
 #include <vector>
 
 std::vector<int> getRandomTerminals(int n, int k, int seed);
+double compute_percentile(std::vector<double> data, double p);
 std::vector<int> getNonTerminals(int n, const std::vector<int>& K);
 
 #endif //UNTITLED2_UTILITY_H
