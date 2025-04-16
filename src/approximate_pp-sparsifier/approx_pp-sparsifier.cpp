@@ -11,7 +11,7 @@ namespace ApproximateSparsifier {
 
     //std::random_device rd;
     //std::mt19937 gen(rd());
-    std::mt19937 gen(42);
+    std::mt19937 gen;
 
     // linked-list based graph structure
     struct col_el {
@@ -229,7 +229,8 @@ namespace ApproximateSparsifier {
     }
 
     // computes an approximate personalized PageRank sparsifier
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int> &K, double alpha, int split, int merge, std::string& sampling) {
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int> &K, double alpha, int split, int merge, int seed, const std::string& sampling) {
+        gen.seed(seed);
         auto inv_K = getNonTerminals(G.n, K);
         // mapping from node to elimination order, here it is used to divide nodes in terminal nodes K from
         // non-terminal nodes inv_K
