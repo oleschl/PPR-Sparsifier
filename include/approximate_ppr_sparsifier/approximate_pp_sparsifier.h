@@ -4,7 +4,7 @@
 #include "graph.h"
 
 namespace ApproximateSparsifier {
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int> &K, double alpha, int split, int merge);
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int> &K, double alpha, int split, int merge, std::string &order);
 }
 
 #endif //PPR_SPARSIFIER_APPROXIMATE_PP_SPARSIFIER_H

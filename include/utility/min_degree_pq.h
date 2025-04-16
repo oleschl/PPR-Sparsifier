@@ -3,6 +3,10 @@
 
 #include <vector>
 
+/*
+https://student.cs.uwaterloo.ca/~cs466/notes/Notes_5.1.1_DynamicMinDegree.pdf
+*/
+
 class MinDegreePQ {
 private:
 
