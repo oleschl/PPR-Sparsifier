@@ -15,6 +15,23 @@ std::vector<int> getRandomTerminals(int n, int k, int seed) {
     return terminals;
 }
 
+double mean(const std::vector<double>& data) {
+    if (data.empty()) return 0.0;
+    double sum = std::accumulate(data.begin(), data.end(), 0.0);
+    return sum / data.size();
+}
+
+// Computes sample variance (denominator: N-1)
+double variance_sample(const std::vector<double>& data) {
+    if (data.size() < 2) return 0.0;
+    double mu = mean(data);
+    double var = 0.0;
+    for (double x : data) {
+        var += (x - mu) * (x - mu);
+    }
+    return var / (data.size() - 1);
+}
+
 double compute_percentile(std::vector<double> data, double p) {
     std::sort(data.begin(), data.end());
 

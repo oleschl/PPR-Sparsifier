@@ -6,7 +6,7 @@
 
 namespace SC_Adj_List{
 
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string& order){
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string& order){
         // get set of non-terminal nodes
         auto inv_K = getNonTerminals(G.n, K);
         // renamed from diag
@@ -113,6 +113,9 @@ namespace SC_Adj_List{
             for(int j = M.xlnz[i]; j < M.xlnz[i+1]; ++j){
                 int col = M.nzsub[M.xnzsub[i]+c];
                 //std::cout << "using col " << col << std::endl;
+                if(j == M.lnz.size()){
+                    std::cout<< j << std::endl;
+                }
                 M.lnz[j] = working_row[col];
                 //std::cout << "updating " << i << "  " << M.nzsub[M.xnzsub[i]+c] << " value " << working_row[col] << std::endl;
                 working_row[col] = 0;

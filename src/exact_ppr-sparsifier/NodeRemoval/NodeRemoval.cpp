@@ -11,7 +11,7 @@ namespace NodeRemoval {
 // version for undirected input graphs
 // even though normalized graph is non symmetric, the non zero elements stay symmetric
 // incoming and outgoing adjacent nodes are the same
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string& order) {
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string& order) {
         // get V\K, the set of non-terminals
         auto inv_K = getNonTerminals(G.n, K);
         // precompute elimination order

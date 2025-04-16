@@ -17,7 +17,7 @@
  */
 namespace NodeRemoval {
     DiGraph constructPPRSparsifier2(const GEdge &G, std::vector<int>& K, double alpha);
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string &order);
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string &order);
 }
 
 #endif //UNTITLED2_NODEREMOVAL_H

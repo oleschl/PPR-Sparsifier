@@ -17,7 +17,7 @@
  * @return A PPR-sparsifier of G.
  */
 namespace SC_Adj_List {
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string& order);
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string& order);
 }
 
 #endif //UNTITLED2_SC_ADJ_LIST_H

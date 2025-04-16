@@ -54,7 +54,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
 
         int lmax = 0;
 
-        if(!merge_flag || merge_i == -1 || merge_link[merge_i] != -1){
+        if(merge_flag || merge_i == -1 || merge_link[merge_i] != -1){
             // iterate through each column j that effects i
             int j = merge_link[i];
             while(j != -1){

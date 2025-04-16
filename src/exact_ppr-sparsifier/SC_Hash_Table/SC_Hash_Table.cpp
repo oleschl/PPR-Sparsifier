@@ -22,7 +22,7 @@
 // static min degree version
 // again assume that K is sorted
 namespace SC_Hash_Table {
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int> &K, double alpha, std::string& order) {
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string& order) {
         // get V\K, the set of non-terminals
         auto inv_K = getNonTerminals(G.n, K);
         // compute static minimum degree ordering

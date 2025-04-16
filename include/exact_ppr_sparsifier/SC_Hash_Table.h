@@ -18,7 +18,7 @@
  */
 namespace SC_Hash_Table {
     DiGraph constructPPRSparsifier2(const GEdge &G, std::vector<int>& K, double alpha);
-    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, std::string& order);
+    DiGraph constructPPRSparsifier(const GEdge &G, std::vector<int>& K, double alpha, const std::string& order);
 }
 
 #endif //UNTITLED2_SC_HASH_TABLE_H
