@@ -29,7 +29,8 @@ void run_exact_from_file(const std::string& algorithm, const std::string& versio
     GEdge G;
     parseEdgeList(filename, G);
     std::cout << "num nodes: " << G.n << " , num edges: " << G.m << std::endl;
-    auto K = getRandomTerminals(G.n, k, 42);
+    //auto K = getRandomTerminals(G.n, k, 42);
+    auto K = get_RNE_terminals(G, k, 42);
 
     std::pair<double, DiGraph> result;
     if (algorithm == "node_removal") {
@@ -113,29 +114,72 @@ void run_approximate_from_file(const std::string& version, bool debug, int k, fl
     std::vector<double> runtimes;
     std::vector<double> norms;
     auto K = getRandomTerminals(G.n, k, 42);
+    // auto K = get_RNE_terminals(G, k, 42);
+    std::vector<std::vector<double>> PPR_G;
+    if(debug) {
+        PPR_G = precomputePPRMatrix(G, K, 1-alpha);
+    }
     for (int i = 0; i < runs; ++i) {
         auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, split, merge, 42+i, version);
         std::cout << "runtime: " << result.first << " ms\n";
-        Sparsifier sp = {result.second, K};
-        auto norm = comparePPVs(G, sp, 1 - alpha);
         runtimes.push_back(result.first);
-        norms.push_back(norm);
+        if(debug){
+            Sparsifier sp = {result.second, K};
+            auto norm = comparePPVs(PPR_G, sp, 1 - alpha);
+            norms.push_back(norm);
+        }
     }
-    std::cout << "mean: " << mean(runtimes) << "sample variance:  " << variance_sample(runtimes) << std::endl;
-    std::cout << "mean: " << mean(norms) << "sample variance:  " << variance_sample(norms) << std::endl;
+    std::cout << "mean: " << mean(runtimes) << "sample variance:  " << sample_stddev(runtimes) << std::endl;
+    std::cout << "mean: " << mean(norms) << "sample variance:  " << sample_stddev(norms) << std::endl;
 }
 
 void run_approximate_chimera(const std::string& version, bool debug, int k, float alpha, bool o, int n, int runs, int split, int merge) {
+    std::vector<double> runtimes;
+    std::vector<double> norms;
+    std::vector<double> avg_edges;
     for (int i = 0; i < runs; ++i) {
         GEdge G = chimera(n, i+1, false);
         std::cout << "num nodes: " << G.n << " , num edges: " << G.m << std::endl;
-        auto K = getRandomTerminals(G.n, k, 42+i);
-        auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, split, merge, 42+i, version);
-        std::cout << "runtime: " << result.first << " ms\n";
-        // TODO code for measuring error (frobenius norm, ...)
-        Sparsifier sp = {result.second, K};
-        comparePPVs(G, sp, 1 - alpha);
+        auto K = getRandomTerminals(G.n, k, 42);
+        std::vector<std::vector<double>> PPR_G;
+        if(debug) {
+            PPR_G = precomputePPRMatrix(G, K, 1-alpha);
+        }
+        std::vector<double> tmp_runtimes;
+        std::vector<double> tmp_norms;
+        std::vector<double> num_edges;
+        for (int j = 0; j < runs; ++j) {
+            auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, split, merge, 42 + j,
+                                      version);
+            std::cout << "runtime: " << result.first << " ms\n";
+            tmp_runtimes.push_back(result.first);
+            if(debug){
+                Sparsifier sp = {result.second, K};
+                auto norm = comparePPVs(PPR_G, sp, 1 - alpha);
+                norms.push_back(norm);
+                tmp_norms.push_back(norm);
+                norms.push_back(norm);
+                num_edges.push_back(result.second.m);
+                std::cout << "edges: " << result.second.m << std::endl;
+            }
+        }
+        auto mean_runtimes = mean(tmp_runtimes);
+        auto variance_runtimes = sample_stddev(tmp_runtimes);
+        auto mean_norms = mean(tmp_norms);
+        auto variance_norms = sample_stddev(tmp_norms);
+        auto mean_edge = mean(num_edges);
+        auto variance_edge = sample_stddev(num_edges);
+        runtimes.push_back(mean_runtimes);
+        std::cout << "runtime mean: " << mean_runtimes << "sample variance:  " << variance_runtimes << std::endl;
+        std::cout << "norm mean: " << mean_norms << "sample variance:  " << variance_norms << std::endl;
+        std::cout << "edges mean: " << mean_edge << "sample variance:  " << variance_edge << std::endl;
     }
+    std::cout << "median: " << compute_percentile(runtimes, 0.5) << std::endl;
+    std::cout << "75th percentile: " << compute_percentile(runtimes, 0.75) << std::endl;
+    std::cout << "worst case: " << *std::max_element(runtimes.begin(), runtimes.end()) << std::endl;
+
+    std::cout << "mean norm: " << mean(norms) << std::endl;
+    std::cout << "variance norm: " << sample_stddev(norms) << std::endl;
 }
 
 void run_approximate_sachdeva_star(const std::string& version, bool debug, int k, float alpha, bool o, int runs,  int j, int l, int split, int merge) {
@@ -164,7 +208,7 @@ int main(int argc, char *argv[]) {
     bool o_flag = false;
     int k = 1;
     float alpha = 0.85;
-    int split = 1, merge = 1, runs = 1;
+    int split = 2, merge = 2, runs = 1;
     int n = 1000, j = 10, l = 10;
 
     int opt;
@@ -185,7 +229,7 @@ int main(int argc, char *argv[]) {
             case 'j': j = std::stoi(optarg); break;
             case 'l': l = std::stoi(optarg); break;
             default:
-                std::cerr << "Unknown or malformed option: " << opt << "\n";
+                std::cerr << "Unknown option: " << opt << "\n";
                 return 1;
         }
     }

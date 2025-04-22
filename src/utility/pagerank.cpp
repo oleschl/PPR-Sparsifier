@@ -2,6 +2,7 @@
 #include <numeric>
 #include <cstdlib>
 #include <cmath>
+#include <iostream>
 #include "graph.h"
 
 std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const DiGraph& G, double alpha) {
@@ -74,7 +75,40 @@ double frobeniusNorm(std::vector<std::vector<double>>& PPR1, std::vector<std::ve
     return std::sqrt(sum2/sum1);
 }
 
+std::vector<std::vector<double>> precomputePPRMatrix(GEdge& G, const std::vector<int>& K, double alpha) {
+    int k = K.size();
+    std::vector<std::vector<double>> PPR_G(k, std::vector<double>(k));
+
+    DiGraph dirG(G.n);
+    for (const auto& edge : G.edges) {
+        dirG.add_edge(edge.u, edge.v, edge.weight);
+        dirG.add_edge(edge.v, edge.u, edge.weight);
+    }
+
+    // Compute personalized PageRank for each terminal
+    for (int i = 0; i < k; ++i) {
+        std::vector<double> personalization(G.n, 0.0);
+        personalization[K[i]] = 1.0;
+
+        auto ppr = pageRank(dirG, personalization, alpha, 1e-12, 10000);
+
+        // Normalize over terminals
+        double norm_factor = 0.0;
+        for (int node : K) {
+            norm_factor += ppr[node];
+        }
+
+        for (int j = 0; j < k; ++j) {
+            PPR_G[i][j] = ppr[K[j]] / norm_factor;
+        }
+    }
+
+    return PPR_G;
+}
+
+
 double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
+
     std::vector<double> pH(H.H.n-1);
     std::vector<double> pG(G.n);
 
@@ -124,7 +158,48 @@ double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
     }
 
     auto norm = frobeniusNorm(PPR_G, PPR_H, H.H.n-1);
-    std::cout << "norm: " << norm << std::endl;
 
-    return diff;
+    return norm;
+}
+
+double comparePPVs(std::vector<std::vector<double>>& PPR_G, Sparsifier& H, double alpha) {
+
+    std::vector<double> pH(H.H.n-1);
+    std::vector<std::vector<double>> PPR_H(H.H.n-1, std::vector<double> (H.H.n-1));
+
+    double diff = 0;
+
+    for(int i = 0; i < H.H.n-1; ++i) {
+        // std::cout << "PPV: " << i << std::endl;
+        // compute pagerank of g and h for p_i
+        // need correct mapping for p_i for G
+        std::vector<double> rH(H.H.n, 0);
+        rH[i] = 1;
+        pH = pageRank(H.H, rH, alpha, 1e-12, 10000);
+
+        // compare common p values and normalize
+        double sumG = 0.0;
+        double sumH = 0.0;
+        for(int j = 0; j < H.H.n-1; ++j) {
+            sumH += pH[j];
+        }
+        for(int j = 0; j < H.H.n-1; ++j) {
+            PPR_H[i][j] = pH[j]/sumH;
+        }
+
+        for(int j = 0; j < H.H.n-1; ++j) {
+            auto localDiff = std::abs(PPR_H[i][j]-PPR_G[i][j]);
+            // auto localDiff = std::abs((pH[j]/sumH)-(pG[H.mapHToG[j]]/sumG));
+            // auto localDiff2 = (pH[j]/sumH)/(pG[H.mapHToG[j]]/sumG);
+            //std::cout << "diff " << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
+            if(localDiff > 0.01) {
+                //std::cout << "high difference detected for node " << j << ":" << PPR_H[i][j] << " and " << PPR_G[i][j] << std::endl;
+            }
+            diff += localDiff;
+        }
+    }
+
+    auto norm = frobeniusNorm(PPR_G, PPR_H, H.H.n-1);
+
+    return norm;
 }

@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <julia.h>
 
- GEdge sachdevaStar(int l, int k){
+GEdge sachdevaStar(int l, int k){
     int n = l * k + 1;
     int m = l * (k*(k-1)/2) + l;
     std::vector<Edge> edges;
@@ -68,6 +68,27 @@ GEdge chimera(int n, int k, bool weighted) {
 
     return {n, m, edges};
 }
+
+GEdge inducedSubgraph(const GEdge& G, const std::vector<int>& terminals) {
+    std::vector<int> inv(G.n, -1);
+    for(int i = 0; i < terminals.size(); ++i){
+        inv[terminals[i]] = i;
+    }
+
+    std::vector<Edge> edges;
+
+    for (const auto& edge : G.edges) {
+        if (inv[edge.u] != -1 && inv[edge.v] != -1) {
+            edges.emplace_back(inv[edge.u], inv[edge.v], edge.weight);
+        }
+    }
+
+    int n = terminals.size();
+    int m = edges.size();
+
+    return {n, m, std::move(edges)};
+}
+
 
 // parse weighted + unweighted edge list
 void parseEdgeList(const std::string& filename, GEdge& G) {

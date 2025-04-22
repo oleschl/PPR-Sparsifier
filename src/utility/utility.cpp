@@ -1,4 +1,5 @@
 #include <random>
+#include <unordered_set>
 #include "utility/utility.h"
 
 std::vector<int> getRandomTerminals(int n, int k, int seed) {
@@ -15,14 +16,46 @@ std::vector<int> getRandomTerminals(int n, int k, int seed) {
     return terminals;
 }
 
+// RNE sampling for m unique nodes
+std::vector<int> get_RNE_terminals(const GEdge& G, int m, int seed) {
+
+    int n = G.n;
+    std::vector<std::vector<int>> adj(G.n, std::vector<int>());
+    for(auto edge : G.edges){
+        adj[edge.v].push_back(edge.u);
+        adj[edge.u].push_back(edge.v);
+    }
+    std::unordered_set<int> sampled_nodes;
+
+    std::mt19937 gen(seed);
+    std::uniform_int_distribution<> node_dist(0, n - 1);
+
+    while ((int)sampled_nodes.size() < m) {
+        int u = node_dist(gen);
+
+        // Skip nodes with no neighbors
+        if (adj[u].empty()) continue;
+
+        std::uniform_int_distribution<> neigh_dist(0, adj[u].size() - 1);
+        int v = adj[u][neigh_dist(gen)];
+
+        sampled_nodes.insert(u);
+        sampled_nodes.insert(v);
+    }
+
+    std::vector<int> result(sampled_nodes.begin(), sampled_nodes.end());
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
 double mean(const std::vector<double>& data) {
     if (data.empty()) return 0.0;
     double sum = std::accumulate(data.begin(), data.end(), 0.0);
     return sum / data.size();
 }
 
-// Computes sample variance (denominator: N-1)
-double variance_sample(const std::vector<double>& data) {
+// Computes sample variance
+double sample_variance(const std::vector<double>& data) {
     if (data.size() < 2) return 0.0;
     double mu = mean(data);
     double var = 0.0;
@@ -30,6 +63,10 @@ double variance_sample(const std::vector<double>& data) {
         var += (x - mu) * (x - mu);
     }
     return var / (data.size() - 1);
+}
+
+double sample_stddev(const std::vector<double>& data) {
+    return std::sqrt(sample_variance(data));
 }
 
 double compute_percentile(std::vector<double> data, double p) {
