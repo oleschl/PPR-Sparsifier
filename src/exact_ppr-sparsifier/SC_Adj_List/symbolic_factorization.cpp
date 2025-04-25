@@ -84,7 +84,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
                 if(nz_beg <= nz_end){
                     int jj = reach_link[i];
                     int j_start = nz_beg;
-                    while(j_start <= nz_end && j_start < jj){
+                    while(j_start <= nz_end && nzsub[j_start] < jj){
                         ++j_start;
                     }
 
@@ -102,6 +102,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
                             if(jj > n){
                                 // goto 1400
                                 exit_early = true;
+                                update_end = false;
                                 break;
                             }
                         }
