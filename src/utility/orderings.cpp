@@ -260,16 +260,17 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
                                     //std::cout << "merging node (update)" << clique_node << " with: " << r_node
                                               //<< std::endl;
                                 } else {
+                                    // or enode is a subset of snode. in this case we can delay the degree update
+                                    // until enode has been eliminated
                                     //std::cout << "delaying update node " << clique_node << " with" << r_node
                                     //        << std::endl;
+                                    pq.update(map_G_to_invK[clique_node-1], INT_MAX-1);
                                 }
-                                // or enode is a subset of snode. in this case we can delay the degree update
-                                // until enode has been eliminated
+
                                 needs_update[clique_node] = 0;
                                 // i have to see how if i still can use my pq for this; maybe enough to just not update?
                                 // dont need to do this; is only important for removing it in elimination but we dont do this
                                 //degprev[snode] = 0;
-                                pq.update(map_G_to_invK[clique_node-1], INT_MAX-1);
                             }
                         }
                         ++k;
@@ -406,8 +407,8 @@ std::pair<std::vector<int>, std::vector<int>> getDynamicMinDegOrdering(int n, in
         int degree = md_xadj[inv_K[i]+2] - md_xadj[inv_K[i]+1];
         // eliminate isolated nodes; acutally we dont have any as all nodes are connected to source vertex
         if(degree == 0){
-            marker[i+1] = INT_MAX;
-            inv_perm[i+1] = num;
+            marker[inv_K[i]+1] = INT_MAX;
+            inv_perm[inv_K[i]+1] = num;
             ++num;
         } else {
             pq.add(i, degree);

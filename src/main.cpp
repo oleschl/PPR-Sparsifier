@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <julia.h>
+#include <set>
 #include "graph.h"
 #include "./utility/utility.h"
 #include "./utility/graph_utility.h"
@@ -29,8 +30,8 @@ void run_exact_from_file(const std::string& algorithm, const std::string& versio
     GEdge G;
     parseEdgeList(filename, G);
     std::cout << "num nodes: " << G.n << " , num edges: " << G.m << std::endl;
-    //auto K = getRandomTerminals(G.n, k, 42);
-    auto K = get_RNE_terminals(G, k, 42);
+    auto K = getRandomTerminals(G.n, k, 42);
+    // auto K = get_RNE_terminals(G, k, 42);
 
     std::pair<double, DiGraph> result;
     if (algorithm == "node_removal") {
@@ -111,26 +112,59 @@ void run_approximate_from_file(const std::string& version, bool debug, int k, fl
     GEdge G;
     parseEdgeList(filename, G);
     std::cout << "num nodes: " << G.n << " , num edges: " << G.m << std::endl;
-    std::vector<double> runtimes;
-    std::vector<double> norms;
     auto K = getRandomTerminals(G.n, k, 42);
     // auto K = get_RNE_terminals(G, k, 42);
     std::vector<std::vector<double>> PPR_G;
     if(debug) {
         PPR_G = precomputePPRMatrix(G, K, 1-alpha);
     }
-    for (int i = 0; i < runs; ++i) {
-        auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, split, merge, 42+i, version);
-        std::cout << "runtime: " << result.first << " ms\n";
-        runtimes.push_back(result.first);
-        if(debug){
-            Sparsifier sp = {result.second, K};
-            auto norm = comparePPVs(PPR_G, sp, 1 - alpha);
-            norms.push_back(norm);
+    std::vector<int> params = {2, 3, 5, 10};
+    for(auto p : params) {
+        std::cout << "param value: " << p << std::endl;
+        std::vector<double> runtimes;
+        std::vector<double> norms;
+        std::vector<double> num_edges;
+        for (int i = 0; i < runs; ++i) {
+            auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, p, p, 42 + i,
+                                      version);
+            std::cout << "runtime: " << result.first << " ms\n";
+            std::cout << "edges: " << result.second.m << "\n";
+            runtimes.push_back(result.first);
+            if (debug) {
+                Sparsifier sp = {result.second, K};
+                auto norm = comparePPVs(PPR_G, sp, 1 - alpha);
+                norms.push_back(norm);
+                num_edges.push_back(result.second.m);
+            }
         }
+        std::cout << "mean runtimes: " << mean(runtimes) << "sample variance:  " << sample_stddev(runtimes) << std::endl;
+        std::cout << "mean norms: " << mean(norms) << "sample variance:  " << sample_stddev(norms) << std::endl;
+        std::cout << "mean edges: " << mean(num_edges) << "sample variance:  " << sample_stddev(num_edges) << std::endl;
     }
-    std::cout << "mean: " << mean(runtimes) << "sample variance:  " << sample_stddev(runtimes) << std::endl;
-    std::cout << "mean: " << mean(norms) << "sample variance:  " << sample_stddev(norms) << std::endl;
+
+    std::string v = "random_clique";
+    for(auto p : params) {
+        std::cout << "param value: " << p << std::endl;
+        std::vector<double> runtimes;
+        std::vector<double> norms;
+        std::vector<double> num_edges;
+        for (int i = 0; i < runs; ++i) {
+            auto result = measureTime(ApproximateSparsifier::constructPPRSparsifier, G, K, alpha, p, p, 42 + i,
+                                      v);
+            std::cout << "runtime: " << result.first << " ms\n";
+            std::cout << "edges: " << result.second.m << "\n";
+            runtimes.push_back(result.first);
+            if (debug) {
+                Sparsifier sp = {result.second, K};
+                auto norm = comparePPVs(PPR_G, sp, 1 - alpha);
+                norms.push_back(norm);
+                num_edges.push_back(result.second.m);
+            }
+        }
+        std::cout << "mean runtimes: " << mean(runtimes) << "sample variance:  " << sample_stddev(runtimes) << std::endl;
+        std::cout << "mean norms: " << mean(norms) << "sample variance:  " << sample_stddev(norms) << std::endl;
+        std::cout << "mean edges: " << mean(num_edges) << "sample variance:  " << sample_stddev(num_edges) << std::endl;
+    }
 }
 
 void run_approximate_chimera(const std::string& version, bool debug, int k, float alpha, bool o, int n, int runs, int split, int merge) {
@@ -195,10 +229,130 @@ void run_approximate_sachdeva_star(const std::string& version, bool debug, int k
     }
 }
 
+std::vector<std::pair<int, int>> getUnweightedEdges(DiGraph& G, int num_edges) {
+    std::vector<double> weighted_degree(G.n);
+    for(int i = 0; i < G.n-1; ++i){
+        for(auto edge : G.adjList[i]){
+            weighted_degree[i] += edge.second;
+        }
+    }
+
+    std::vector<Edge> edges;
+    // TODO: digraphs should be that all edges except to sink have equal weight and so are undirected
+    // true for ours but pagerank sparsifier not unique but because of normalization can have scaling
+    // maybe better to normalize so that unique
+    for(int i = 0; i < G.n-1; ++i){
+        for(int j = 0; j < G.adjList[i].size(); ++j){
+            if(G.adjList[i][j].first != G.n -1 && i != G.adjList[i][j].first)
+                edges.emplace_back(i, G.adjList[i][j].first, G.adjList[i][j].second/weighted_degree[i]);
+        }
+    }
+
+    std::sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) {
+        if (a.weight != b.weight) {
+            return a.weight > b.weight;  // Primary: descending weight
+        }
+        // Secondary: sort by (u, v) ascending
+        if (a.u != b.u) {
+            return a.u < b.u;
+        }
+        return a.v < b.v;
+    });
+
+    std::vector<std::pair<int, int>> unweighted_edges(num_edges);
+    for(int i = 0; i < num_edges; ++ i) {
+        unweighted_edges[i] = {edges[i].u, edges[i].v};
+    }
+
+    return unweighted_edges;
+}
+
+double experiment_weighted(GEdge& G, DiGraph& exactSparsifier, DiGraph& approximateSparsifier, std::vector<int>& K, double alpha) {
+    std::vector<Edge> edges;
+    for(int i = 0; i < exactSparsifier.n; ++i){
+        for(auto j : exactSparsifier.adjList[i]){
+            edges.emplace_back(i, j.first, j.second);
+        }
+    }
+
+    std::sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) {
+        if (a.weight != b.weight) {
+            return a.weight > b.weight;  // Primary: descending weight
+        }
+        // Secondary: sort by (u, v) ascending
+        if (a.u != b.u) {
+            return a.u < b.u;
+        }
+        return a.v < b.v;
+    });
+
+    std::vector<Edge> new_edges(approximateSparsifier.m);
+    for(int i = 0; i < approximateSparsifier.m; ++ i) {
+        new_edges[i] = edges[i];
+    }
+    DiGraph new_spar(exactSparsifier.n);
+    for(auto edge : new_edges){
+        new_spar.add_edge(edge.u, edge.v, edge.weight);
+    }
+
+    Sparsifier sp = {new_spar, K};
+
+    return comparePPVs(G, sp, 1 - alpha);
+}
+
+int experiment_unweighted(GEdge& G, DiGraph& exactSparsifier, DiGraph& approximateSparsifier, std::vector<int>& K) {
+    auto induced = inducedSubgraph(G, K);
+    std::cout << "undirected edges in induced: " << induced.m << std::endl;
+    auto edges_exact = getUnweightedEdges(exactSparsifier, 2*induced.m);
+    auto edges_approx = getUnweightedEdges(approximateSparsifier, 2*induced.m);
+
+    std::vector<std::pair<int, int>> induced_edges;
+    for(auto edge : induced.edges) {
+        induced_edges.emplace_back(edge.u, edge.v);
+        induced_edges.emplace_back(edge.v, edge.u);
+    }
+    auto set_induced = std::set(induced_edges.begin(), induced_edges.end());
+    auto set_exact = std::set(edges_exact.begin(), edges_exact.end());
+    auto set_approx = std::set(edges_approx.begin(), edges_approx.end());
+
+    std::vector<std::pair<int, int>> intersection;
+    std::set_intersection(set_exact.begin(), set_exact.end(),
+                          set_approx.begin(), set_approx.end(),
+                          std::back_inserter(intersection));
+
+    std::vector<std::pair<int, int>> uni;
+    std::set_union(set_exact.begin(), set_exact.end(),
+                   set_approx.begin(), set_approx.end(),
+                   std::back_inserter(uni));
+
+    std::vector<std::pair<int, int>> intersection2;
+    std::set_intersection(set_exact.begin(), set_exact.end(),
+                          set_induced.begin(), set_induced.end(),
+                          std::back_inserter(intersection2));
+
+    std::vector<std::pair<int, int>> uni2;
+    std::set_union(set_exact.begin(), set_exact.end(),
+                   set_induced.begin(), set_induced.end(),
+                   std::back_inserter(uni2));
+
+    if (uni.empty()) return 0.0;  // avoid division by zero
+
+    std::cout << "Jaccard: " << static_cast<double>(intersection.size()) / uni.size() << std::endl;
+    std::cout << "Jaccard ind: " << static_cast<double>(intersection2.size()) / uni2.size() << std::endl;
+
+    return static_cast<double>(intersection.size()) / uni.size();
+}
+
+double norm_induced(GEdge& G, std::vector<int>& K, double alpha){
+    auto induced = inducedSubgraph(G, K);
+    return frobeniusInduced(G, induced, K, 1-alpha);
+}
+
+
 int main(int argc, char *argv[]) {
     // init julia here
-    jl_init();
-    jl_eval_string("using Laplacians");
+    // jl_init();
+    //jl_eval_string("using Laplacians");
 
     std::string mode;
     std::string algorithm;

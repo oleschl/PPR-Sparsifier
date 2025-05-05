@@ -300,7 +300,8 @@ namespace ApproximateSparsifier {
             auto columnPtr = H.cols[inv_K.size() + i];
             std::vector<col_el *> column = {};
             while (columnPtr) {
-                column.push_back(columnPtr);
+                if(columnPtr->row >= inv_K.size())
+                    column.push_back(columnPtr);
                 columnPtr = columnPtr->next;
             }
             if (column.empty()) continue;

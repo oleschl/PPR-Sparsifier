@@ -19,7 +19,18 @@ std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const Di
     // scale such that W is walking matrix
     for(int i = 0; i < n; ++i) {
         for(auto& j : W[i]) {
-            j.second *= (alpha/sums[i]);
+            if(sums[i] == 0) {
+                j.second == 0;
+            } else if (j.second < 0) {
+                if (std::abs(j.second) < 1e-7) {
+                    j.second *= -(alpha/sums[i]);
+                } else {
+                    std::cout << "error" << std::endl;
+                }
+            } else {
+                j.second *= (alpha/sums[i]);
+            }
+            //j.second *= (alpha/sums[i]);
         }
     }
 
@@ -104,6 +115,43 @@ std::vector<std::vector<double>> precomputePPRMatrix(GEdge& G, const std::vector
     }
 
     return PPR_G;
+}
+
+double frobeniusInduced(GEdge& G, GEdge& induced, std::vector<int> mapHtoG, double alpha) {
+    DiGraph dirG(G.n);
+    for (const auto& edge : G.edges) {
+        dirG.add_edge(edge.u, edge.v, edge.weight);
+        dirG.add_edge(edge.v, edge.u, edge.weight);
+    }
+    std::vector<std::vector<double>> PPR(induced.n, std::vector<double> (induced.n));
+
+    for(int i = 0; i < induced.n; ++i) {
+        std::vector<double> rG(G.n, 0);
+        rG[mapHtoG[i]] = 1;
+        auto pG = pageRank(dirG, rG, alpha, 1e-12, 10000);
+        // compare common p values and normalize
+        double sumG = 0.0;
+        for(int j = 0; j < induced.n; ++j) {
+            sumG += pG[mapHtoG[j]];
+        }
+        for(int j = 0; j < induced.n; ++j) {
+            PPR[i][j] = pG[mapHtoG[j]]/sumG;
+        }
+    }
+
+    DiGraph dirInd(induced.n);
+    for (const auto& edge : induced.edges) {
+        dirInd.add_edge(edge.u, edge.v, edge.weight);
+        dirInd.add_edge(edge.v, edge.u, edge.weight);
+    }
+    std::vector<std::vector<double>> PPR_ind(induced.n, std::vector<double> (induced.n));
+    for(int i = 0; i < induced.n; ++i) {
+        std::vector<double> rG(induced.n, 0);
+        rG[i] = 1;
+        PPR_ind[i] = pageRank(dirInd, rG, alpha, 1e-12, 10000);
+    }
+
+    return frobeniusNorm(PPR, PPR_ind, induced.n);
 }
 
 
