@@ -7,6 +7,8 @@ set(CMAKE_C_FLAGS "-O0")
 
 find_package(Armadillo REQUIRED)
 
+set(JULIA_DIR "/home/oles/.julia/juliaup/julia-1.10.4+0.x64.linux.gnu")
+
 # Include Julia headers
 include_directories(${CMAKE_SOURCE_DIR}/include "${JULIA_DIR}/include/julia")
 

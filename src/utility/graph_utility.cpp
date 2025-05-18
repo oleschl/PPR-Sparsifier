@@ -89,7 +89,6 @@ GEdge inducedSubgraph(const GEdge& G, const std::vector<int>& terminals) {
     return {n, m, std::move(edges)};
 }
 
-
 // parse weighted + unweighted edge list
 void parseEdgeList(const std::string& filename, GEdge& G) {
     std::ifstream infile(filename);
@@ -108,9 +107,12 @@ void parseEdgeList(const std::string& filename, GEdge& G) {
             w = 1.0; // only two values -> unweighted
         }
 
-        ++G.m;
+        // currently we only support reading undirected graphs where each edge appears only once
+        //if (u < v){
         G.n = std::max(G.n, std::max(u, v) + 1);
+        ++G.m;
         G.addEdge(u, v, w);
+        //}
     }
 
     infile.close();

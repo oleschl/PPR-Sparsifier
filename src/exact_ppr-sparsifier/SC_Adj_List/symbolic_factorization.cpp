@@ -8,6 +8,14 @@ struct SparseMatrix{
     std::vector<int> nzsub;
 };
 
+/*
+ * Symbolic factorization for non-terminal nodes.
+ *
+ * Ported and adapted from original Fortran code in:
+ * Alan George, Joseph Liu, and Esmond Ng,
+ * *Computer Solution of Sparse Linear Systems*, 1994.
+ */
+
 SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::vector<int> &xadj, std::vector<int> &perm, std::vector<int> &inv_perm){
 
     int nz_beg = 0;
@@ -24,7 +32,7 @@ SparseMatrix symbolic_factorization(int n, int k, std::vector<int> &adj, std::ve
     std::vector<int> nzsub;
 
     for(int i = 0; i < k; ++i){
-        //std::cout << "processing row " << i << " or " << perm[i] << std::endl;
+        // std::cout << "processing row " << i << " or " << perm[i] << std::endl;
         // number of non-zeros of i
         int i_nz = 0;
         int merge_i = merge_link[i];

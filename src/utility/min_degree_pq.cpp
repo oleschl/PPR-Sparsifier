@@ -1,8 +1,8 @@
 #include "utility/min_degree_pq.h"
 
 // data structure for dynamically finding the min degree vertex
-// graph of n vertices and k non-terminals
-// not nice but assume that isolated vertices have been handled/removed
+// of a graph with n vertices and k non-terminals
+// we assume that isolated vertices have been handled/removed
 MinDegreePQ::MinDegreePQ(int n, int k)
         : minDegree(1), degreeThreshold(n / degreeThresholdRatio), vertices(k), buckets(degreeThreshold) {}
 
@@ -13,6 +13,7 @@ void MinDegreePQ::add(int vertexId, int degree){
 
 void MinDegreePQ::eliminate(int vertexId){
     remove(vertices[vertexId]);
+    //vertices[vertexId] = nullptr;
 }
 
 void MinDegreePQ::update(int vertexId, int newDegree) {
@@ -50,6 +51,7 @@ int MinDegreePQ::pop(){
     Vertex* vertex = buckets[minDegree];
 
     remove(vertex);
+    //vertices[vertex->id] = nullptr;
     return vertex->id;
 }
 

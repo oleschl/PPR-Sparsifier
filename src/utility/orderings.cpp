@@ -54,6 +54,16 @@ std::pair<std::vector<int>, std::vector<int>> getStaticMinDegOrdering(const GEdg
     return {perm, invPerm};
 }
 
+/*
+ * Minimum degree ordering algorithm for non-terminal nodes.
+ *
+ * Ported and adapted from:
+ * https://github.com/PetrKryslUCSD/Sparspak.jl/blob/main/src/SparseSpdMethod/SpkMMD.jl
+ *
+ * Original author: Petr Krysl, UC San Diego
+ *
+ * This version has been modified and translated to C++.
+ */
 void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag, std::vector<int> &marker, std::vector<int> &needs_update, std::vector<int> &inv_perm, std::vector<int> &super_size, std::vector<int> &merge_parent, std::vector<int> &elim_next, std::vector<int> &xadj, std::vector<int> &adj, std::vector<int> &map_G_to_K){
     marker[v] = tag;
 
@@ -64,7 +74,7 @@ void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag,
     for(int i = xadj[v]; i < xadj[v+1]; ++i){
         int neighbor = adj[i];
         if(neighbor == 0) break;
-        // why do i need this test??? to avoid merge super nodes!
+        // avoid adding merged nodes
         if(marker[neighbor] < tag){
             marker[neighbor] = tag;
             // if neighbor has not been eliminated
@@ -111,8 +121,6 @@ void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag,
 
     if (rloc <= rlmt) adj[rloc] = 0;
 
-    // TODO: somewhere here we also have to test if the node is in K or invK!
-    // maybe enough to set needupdate[node] = 0???
     // find indistinguishable nodes and nodes where we have to update degrees
     int i = xadj[v];
     int istop = xadj[v+1];
@@ -123,21 +131,14 @@ void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag,
             i = xadj[-r_node];
             istop = xadj[-r_node + 1];
         } else if(map_G_to_K[r_node-1] == -1){
-            // i think this step is only necessary here because we do multiple elimination
-            // and want to find an independent set of nodes to eliminate
-            // if node is connected, it is not independent and we need to remove it
-            // TODO: remove rnode
-
-            // this step should only be applied to nodes in invK i think because here we modify the
-            // adjacency list of the adjacent nodes and we dont have to update nodes in K
-            // we somehow have to avoid updates in update function
-            // if rnode in K continue (dont forget to increment i)
-
+            // this step should only be applied to nodes in invK because here we modify the
+            // adjacency list of the adjacent nodes and set the flag to update their degree
+            // we don't have to update nodes in K
             int xqnbr = xadj[r_node];
             for(int j = xadj[r_node]; j < xadj[r_node+1]; ++j){
                 int neighbor = adj[j];
                 if(neighbor == 0) break;
-                // count number of differnt neihbours
+                // count number of different neighbours
                 if(marker[neighbor] < tag){
                     adj[xqnbr] = neighbor;
                     ++xqnbr;
@@ -152,7 +153,6 @@ void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag,
                 super_size[r_node] = 0;
                 merge_parent[r_node] = v;
                 marker[r_node] = INT_MAX;
-                // we need to remove node from degree structure; maybe in update
                 pq.eliminate(map_G_to_invK[r_node - 1]);
             } else {
                 needs_update[r_node] = nqnbrs + 1;
@@ -165,6 +165,7 @@ void eliminate(MinDegreePQ &pq, std::vector<int> &map_G_to_invK, int v, int tag,
 
             ++i;
         } else {
+            // if rnode in K continue dont forget to increment i
             ++i;
         }
         if(i >= istop) break;
@@ -193,15 +194,7 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
             if(super_size[r_node] != 0) {
                 elim_size += super_size[r_node];
                 marker[r_node] = max_tag;
-
-                // we dont need this, so setting needupdate = 0 for nodes in K should be enough?
-                // i think we dont need this test since we dont do multple eliminations but can use to avoid eliminations of nodes in K
-                // actually we might want to merch nodes in K to reduce number of updates; we dont do updates since we dont eliminate them; does not work
-                // not so easy because only want to merge a node of K with another node of K
-                // because ohter node will be eliminated so maybe dont merch haha
-                // i think its not worth the effort
                 if(needs_update[r_node] > 0){
-
                     if(needs_update[r_node] != 2){
                         tmp_next[r_node] = qx_head;
                         qx_head = r_node;
@@ -209,8 +202,6 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
                         tmp_next[r_node] = q2_head;
                         q2_head = r_node;
                     }
-                    //tmp_next[r_node] = qx_head;
-                    //qx_head = r_node;
                 }
             }
             ++i;
@@ -219,7 +210,7 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
         r_node = adj[i];
     }
 
-    // for each reachable node with two neighbors (enode form current elimination and some other)
+    // for each reachable node with two neighbors (enode from current elimination and some other)
     r_node = q2_head;
     while(r_node > 0){
         if(needs_update[r_node] > 0){
@@ -250,7 +241,7 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
                                 marker[clique_node] = tag;
                                 deg += super_size[clique_node];
                             } else if (needs_update[clique_node] > 0) {
-                                // r_node and clique_node are indistingusialbe and merge them
+                                // r_node and clique_node are indistinguishable and merge them
                                 if (needs_update[clique_node] == 2) {
                                     super_size[r_node] += super_size[clique_node];
                                     super_size[clique_node] = 0;
@@ -260,17 +251,15 @@ int update(MinDegreePQ &pq, int tag, int min_deg, std::vector<int> & xadj, std::
                                     //std::cout << "merging node (update)" << clique_node << " with: " << r_node
                                               //<< std::endl;
                                 } else {
-                                    // or enode is a subset of snode. in this case we can delay the degree update
-                                    // until enode has been eliminated
+                                    // or current neighbor is a subset of other clique node.
+                                    // in this case we can delay the degree update until the current neighbor has been
+                                    // eliminated
                                     //std::cout << "delaying update node " << clique_node << " with" << r_node
                                     //        << std::endl;
                                     pq.update(map_G_to_invK[clique_node-1], INT_MAX-1);
                                 }
 
                                 needs_update[clique_node] = 0;
-                                // i have to see how if i still can use my pq for this; maybe enough to just not update?
-                                // dont need to do this; is only important for removing it in elimination but we dont do this
-                                //degprev[snode] = 0;
                             }
                         }
                         ++k;
@@ -371,8 +360,7 @@ void set_permutation(int n, int k, std::vector<int> &perm, std::vector<int> &inv
     }
 }
 
-
-// if v is a positive value means v is adjacent, if v is negative means all of v neighbors are adjacent (pointer to clique)
+// if adj[u] = v is a positive value means v is adjacent, if v is negative means all of v neighbors are adjacent (pointer to clique)
 // implementation without multiple elimination
 std::pair<std::vector<int>, std::vector<int>> getDynamicMinDegOrdering(int n, int m, std::vector<int> &xadj, std::vector<int> &adj, std::vector<int>& K, std::vector<int> & inv_K){
     int size_inv_K = inv_K.size();
@@ -405,7 +393,7 @@ std::pair<std::vector<int>, std::vector<int>> getDynamicMinDegOrdering(int n, in
     // create priority queue
     for(int i = 0; i < size_inv_K; ++i){
         int degree = md_xadj[inv_K[i]+2] - md_xadj[inv_K[i]+1];
-        // eliminate isolated nodes; acutally we dont have any as all nodes are connected to source vertex
+        // eliminate isolated nodes
         if(degree == 0){
             marker[inv_K[i]+1] = INT_MAX;
             inv_perm[inv_K[i]+1] = num;
@@ -430,8 +418,7 @@ std::pair<std::vector<int>, std::vector<int>> getDynamicMinDegOrdering(int n, in
         int eliminationVertex = inv_K[pq.pop()]+1;
         int mindeg = pq.get_min_deg();
         inv_perm[eliminationVertex] = num;
-        //std::cout << "eliminating: " << eliminationVertex << " degree: " << mindeg << " num: " << num << std::endl;
-
+        // std::cout << "eliminating: " << eliminationVertex << " degree: " << mindeg << " num: " << num << std::endl;
         if(num + super_size[eliminationVertex] > size_inv_K){
             break;
         }

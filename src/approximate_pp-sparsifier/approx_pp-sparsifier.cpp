@@ -107,7 +107,15 @@ namespace ApproximateSparsifier {
         return prev_edge_new;
     }
 
-    // clique sampling procedure based on ...
+    /*
+     * Random Clique sampling inspired by:
+     * Rasmus Kyng and Sushant Sachdeva,
+     * "Approximate Gaussian Elimination for Laplacians: Fast, Sparse, and Simple",
+     * CoRR abs/1605.02353, 2016.
+     * Available at: http://arxiv.org/abs/1605.02353
+     *
+     * This implementation is adapted based on the methods described in the paper.
+     */
     void sample_random_clique(EliminationGraph& G, int v, MinDegreePQ& pq, int merge, int numNonTerminals) {
         // load column
         std::vector<col_el*> column = {};
@@ -160,7 +168,14 @@ namespace ApproximateSparsifier {
         }
     }
 
-    // clique sampling procedure based on ...
+    /*
+     * Elimination Star Clique sampling.
+     *
+     * Ported from:
+     * https://github.com/danspielman/Laplacians.jl
+     *
+     * Original author: Daniel Spielman
+     */
     void sample_elim_star(EliminationGraph &G, int v, MinDegreePQ &pq, int merge, int numNonTerminals) {
         // load column
         std::vector<col_el *> column = {};

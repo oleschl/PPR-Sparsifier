@@ -9,6 +9,8 @@ std::vector<double> pageRank(const DiGraph& G, std::vector<double>& r, double al
 std::vector<std::vector<double>> precomputePPRMatrix(GEdge& G, const std::vector<int>& K, double alpha);
 
 double frobeniusInduced(GEdge& G, GEdge& induced, std::vector<int> mapHtoG, double alpha);
+std::vector<std::vector<double>> getPPRMatrixG(GEdge& G, double alpha);
+std::vector<std::vector<double>> getPPRMatrixSparsifier(DiGraph& H, double alpha);
 
 double comparePPVs(GEdge& G, Sparsifier& H, double alpha);
 double comparePPVs(std::vector<std::vector<double>>& PPR_G, Sparsifier& H, double alpha);

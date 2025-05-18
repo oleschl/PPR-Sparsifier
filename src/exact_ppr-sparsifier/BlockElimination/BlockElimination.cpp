@@ -134,9 +134,7 @@ namespace SC_BlockElimination {
         jl_value_t *args[10] = {n1, n2, m1, m2, (jl_value_t *) C1, (jl_value_t *) R1, (jl_value_t *) V1,
                                 (jl_value_t *) C2, (jl_value_t *) R2, (jl_value_t *) V2};
 
-        // there should be nicer ways to transfer arguments?
         jl_array_t *x = (jl_array_t *) jl_call(func, args, 10);
-        //jl_atexit_hook(0);
         // std::cout << "finished matrix solve" << std::endl;
         return x;
     }

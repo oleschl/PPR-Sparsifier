@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include "graph.h"
 
 std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const DiGraph& G, double alpha) {
@@ -11,7 +12,15 @@ std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const Di
     std::vector<double> sums(n);
 
     for(int i = 0; i < n; ++i) {
-        for(const auto& j : G.adjList[i]) {
+        for(auto& j : W[i]) {
+            // allow some tolerance because of floating arithmetic
+            if (j.second < 0) {
+                if (std::abs(j.second) < 1e-7) {
+                    j.second = 0;
+                } else {
+                    std::cout << "error: negative edge weight detected" << std::endl;
+                }
+            }
             sums[i] += j.second;
         }
     }
@@ -20,17 +29,10 @@ std::vector<std::vector<std::pair<int, double>>> constructWalkingMatrix(const Di
     for(int i = 0; i < n; ++i) {
         for(auto& j : W[i]) {
             if(sums[i] == 0) {
-                j.second == 0;
-            } else if (j.second < 0) {
-                if (std::abs(j.second) < 1e-7) {
-                    j.second *= -(alpha/sums[i]);
-                } else {
-                    std::cout << "error" << std::endl;
-                }
+                j.second = 0;
             } else {
                 j.second *= (alpha/sums[i]);
             }
-            //j.second *= (alpha/sums[i]);
         }
     }
 
@@ -62,7 +64,7 @@ std::vector<double> pageRank(const std::vector<std::vector<std::pair<int, double
         std::swap(newP, p);
     }
 
-    std::cout << "stopped because max iteration" << std::endl;
+    std::cout << "stopped because exceeded max iteration" << std::endl;
 
     return p;
 }
@@ -72,6 +74,42 @@ std::vector<double> pageRank(DiGraph& G, std::vector<double> r, double alpha, do
     auto W = constructWalkingMatrix(G, alpha);
     return pageRank(W, r, G.n, eps, matIter);
 }
+
+std::vector<std::vector<double>> getPPRMatrixG(GEdge& G, double alpha) {
+    DiGraph dirG(G.n);
+    for (const auto& edge : G.edges) {
+        dirG.add_edge(edge.u, edge.v, edge.weight);
+        dirG.add_edge(edge.v, edge.u, edge.weight);
+    }
+    std::vector<std::vector<double>> PPR(G.n, std::vector<double> (G.n));
+    for(int i = 0; i < G.n; ++i) {
+        std::vector<double> rG(G.n, 0);
+        rG[i] = 1;
+        PPR[i] = pageRank(dirG, rG, alpha, 1e-12, 10000);
+    }
+    return PPR;
+}
+
+std::vector<std::vector<double>> getPPRMatrixSparsifier(DiGraph& H, double alpha){
+
+    std::vector<std::vector<double>> PPR_H(H.n-1, std::vector<double> (H.n-1));
+    for(int i = 0; i < H.n-1; ++i) {
+        std::vector<double> rH(H.n, 0);
+        rH[i] = 1;
+        auto tmp = pageRank(H, rH, alpha, 1e-12, 10000);
+        // compare common p values and normalize
+        double sumH = 0.0;
+        for(int j = 0; j < H.n-1; ++j) {
+            sumH += tmp[j];
+        }
+        for(int j = 0; j < H.n-1; ++j) {
+            PPR_H[i][j] = tmp[j]/sumH;
+        }
+    }
+
+    return PPR_H;
+}
+
 
 double frobeniusNorm(std::vector<std::vector<double>>& PPR1, std::vector<std::vector<double>>& PPR2, int n) {
     double sum1 = 0.0;
@@ -173,7 +211,7 @@ double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
 
     for(int i = 0; i < H.H.n-1; ++i) {
         std::cout << "PPV: " << i << std::endl;
-        // compute pagerank of g and h for p_i
+        // compute pagerank p_i for G and H
         // need correct mapping for p_i for G
         std::vector<double> rH(H.H.n, 0);
         rH[i] = 1;
@@ -196,9 +234,7 @@ double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
 
         for(int j = 0; j < H.H.n-1; ++j) {
             auto localDiff = std::abs((pH[j]/sumH)-(pG[H.mapHToG[j]]/sumG));
-            auto localDiff2 = (pH[j]/sumH)/(pG[H.mapHToG[j]]/sumG);
-            //std::cout << "diff " << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
-            if(localDiff > 0.1) {
+            if(localDiff > 0.001) {
                 std::cout << "high difference detected for node " << j << ":" << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
             }
             diff += localDiff;
@@ -206,21 +242,21 @@ double comparePPVs(GEdge& G, Sparsifier& H, double alpha) {
     }
 
     auto norm = frobeniusNorm(PPR_G, PPR_H, H.H.n-1);
+    std::cout << "norm: " << norm << std::endl;
 
     return norm;
 }
 
+// useful when comparing multiple sparsifiers to input graph and avoid redundant computation
 double comparePPVs(std::vector<std::vector<double>>& PPR_G, Sparsifier& H, double alpha) {
 
     std::vector<double> pH(H.H.n-1);
     std::vector<std::vector<double>> PPR_H(H.H.n-1, std::vector<double> (H.H.n-1));
 
     double diff = 0;
-
     for(int i = 0; i < H.H.n-1; ++i) {
         // std::cout << "PPV: " << i << std::endl;
-        // compute pagerank of g and h for p_i
-        // need correct mapping for p_i for G
+        // compute pagerank p_i for H
         std::vector<double> rH(H.H.n, 0);
         rH[i] = 1;
         pH = pageRank(H.H, rH, alpha, 1e-12, 10000);
@@ -237,10 +273,7 @@ double comparePPVs(std::vector<std::vector<double>>& PPR_G, Sparsifier& H, doubl
 
         for(int j = 0; j < H.H.n-1; ++j) {
             auto localDiff = std::abs(PPR_H[i][j]-PPR_G[i][j]);
-            // auto localDiff = std::abs((pH[j]/sumH)-(pG[H.mapHToG[j]]/sumG));
-            // auto localDiff2 = (pH[j]/sumH)/(pG[H.mapHToG[j]]/sumG);
-            //std::cout << "diff " << pH[j]/sumH << " and " << pG[H.mapHToG[j]]/sumG << std::endl;
-            if(localDiff > 0.01) {
+            if(localDiff > 0.001) {
                 //std::cout << "high difference detected for node " << j << ":" << PPR_H[i][j] << " and " << PPR_G[i][j] << std::endl;
             }
             diff += localDiff;
@@ -248,6 +281,7 @@ double comparePPVs(std::vector<std::vector<double>>& PPR_G, Sparsifier& H, doubl
     }
 
     auto norm = frobeniusNorm(PPR_G, PPR_H, H.H.n-1);
+    std::cout << "norm: " << norm << std::endl;
 
     return norm;
 }
